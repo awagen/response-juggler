@@ -33,13 +33,11 @@ class FieldSamplerSelector:
         selection: List[any] = [x[1] for x in relevant_vars if x[0].startswith(FieldSamplerSelector.
                                                                                FIELD_SAMPLER_SELECTION_PREFIX)][
             0].split(",")
-        print("selection is: %s" % selection)
         type_conversion = [x[1] for x in relevant_vars if x[0].startswith(FieldSamplerSelector.
                                                                           FIELD_SAMPLER_ELEMENT_CAST_PREFIX)][0]
         selection = list([TypeConversions.convert(x, type_conversion) for x in selection])
         if s_type == FieldSamplerSelector.FIELD_SAMPLER_TYPE_SINGLE:
-            print("selecting OneOfSampler with selection: %s" % selection)
-            return OneOfSampler(selection)
+            return OneOfSampler(selection, 1000)
         elif s_type == FieldSamplerSelector.FIELD_SAMPLER_TYPE_LIST:
             do_repeat = [bool(x[1]) for x in relevant_vars if x[0].startswith(FieldSamplerSelector.
                                                                               FIELD_SAMPLER_TYPE_LIST_REPEAT_PREFIX)][

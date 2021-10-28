@@ -1,5 +1,4 @@
 import json
-import random
 from typing import Dict
 
 from fastapi import FastAPI
@@ -7,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.config.app_config import *
 from src.config.app_config import AppConfig
+from src.lib.sampler.sampler import Sampler
 
 app = FastAPI()
 
@@ -34,19 +34,41 @@ async def root():
     return {"message": "hi"}
 
 
-def replace_placeholders(content: str, replacements: Dict[str, Sampler]) -> (str, bool):
-    print("replacements: %s" % replacements)
-    did_replace = False
-    for placeholder in replacements.keys():
-        if placeholder in content:
-            did_replace = True
-            replacement = replacements[placeholder].sample()
-            if isinstance(replacement, list):
-                replacement = "[" + ",".join(replacement) + "]"
-            else:
-                replacement = str(replacement)
-            content = content.replace(placeholder, replacement)
-    return content, did_replace
+def apply_replacement_if_applicable(content: str, key: str, sampler: Sampler) -> (str, bool):
+    if key in content:
+        replacement = sampler.sample()
+        if isinstance(replacement, list):
+            replacement = "[" + ",".join(replacement) + "]"
+        else:
+            replacement = str(replacement)
+        content = content.replace(key, replacement, 1)
+        return content, True
+    return content, False
+
+
+def replace_placeholders(content: str, partial_replacements: Dict[str, Sampler],
+                         field_replacements: Dict[str, Sampler]) -> (str, bool, bool):
+    """
+    replace replacements in content and return resulting content
+    :param content: content to replace placeholders in
+    :param partial_replacements: the partial replacements (e.g replacing placeholders with jsons)
+    :param field_replacements: the field replacements (e.g replacing placeholders with values)
+    :return: returns tuple of (new content, is_partial_replacement, is_field_replacement)
+    """
+    did_partial_replace = False
+    did_field_replace = False
+
+    for placeholder in partial_replacements:
+        content, did_partial_replace = apply_replacement_if_applicable(content, key=placeholder,
+                                                                       sampler=partial_replacements[placeholder])
+
+    for placeholder in field_replacements:
+        while True:
+            content, did_field_replace = apply_replacement_if_applicable(content, key=placeholder,
+                                                                         sampler=field_replacements[placeholder])
+            if not did_field_replace:
+                break
+    return content, did_partial_replace, did_field_replace
 
 
 @app.get("/search")
@@ -57,28 +79,17 @@ async def search():
     partial_placeholder_sampler_map = AppConfig.get_partial_placeholder_to_sampler_map()
     # replacement samplers for the fields
     field_placeholder_sampler_map = AppConfig.get_field_placeholder_to_sampler_map()
-    print("field_placeholder_sampler_map: %s" % field_placeholder_sampler_map)
-    # now combine both in single placeholder replacement map
-    all_placeholder_sampler_map = {**field_placeholder_sampler_map, **partial_placeholder_sampler_map}
-
-    print("main content before replacement: %s" % main_content)
 
     # now just replace all keys starting from main_content till no placeholder matches anymore
     max_replacement_iterations = 10
     current_iteration = 0
     did_replace = True
     while current_iteration < max_replacement_iterations and did_replace:
-        current_iteration += 1
-        main_content, did_replace = replace_placeholders(main_content, all_placeholder_sampler_map)
+        main_content, did_partial_replace, did_field_replace = replace_placeholders(main_content,
+                                                                                    partial_placeholder_sampler_map,
+                                                                                    field_placeholder_sampler_map)
+        if did_partial_replace:
+            current_iteration += 1
+        did_replace = did_partial_replace or did_field_replace
 
-    print("main content after replacement: %s" % main_content)
-
-    # prepping the json
-    # doc_array = []
-    # for pid in product_id_sample:
-    #     doc_array.append(AppConfig.doc_partial.replace(AppConfig.search_replace_pid_key, pid))
-    # TODO: we likely will have to add to our list samplers the join below to wrap it in a json list structure
-    # doc_array_str = '[' + ','.join(doc_array) + ']'
-    # result_content = AppConfig.search_content.replace(AppConfig.search_replace_doc_list_key, doc_array_str)
-    # return json.loads(result_content)
     return json.loads(main_content)

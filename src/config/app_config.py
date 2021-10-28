@@ -1,12 +1,11 @@
 import asyncio
 import os
-from typing import Tuple, List, Callable
+from typing import Tuple, List
 
 import aiohttp
 import nest_asyncio
 
 from src.config.env_config import EnvConfig
-from src.lib.sampler.sampler import Sampler
 from src.lib.sampler.selectors.field_sampler_selector import FieldSamplerSelector
 from src.lib.sampler.selectors.json_sampler_selector import JsonSamplerSelector
 from src.lib.string_utils import StringUtils
@@ -23,20 +22,18 @@ class AppConfig:
     # so we can extract the json content and sampler
     fully_defined_partial_names = EnvConfig.configured_partial_names()
 
-    print("full_defined_partial_names: %s" % fully_defined_partial_names)
+    print("fully defined partial names: %s" % fully_defined_partial_names)
 
     partial_placeholder_to_content_map = {}
     partial_placeholder_to_sampler_map = {}
 
     for partial_name in fully_defined_partial_names:
-        print("partial_name: %s" % partial_name)
         partial_placeholder = os.getenv(EnvConfig.TEMPLATE_PARTIAL_IDENT_PREFIX + partial_name)
         partial_path = os.getenv(EnvConfig.TEMPLATE_PARTIAL_CONTENT_PREFIX + partial_name)
         with open("%s/%s" % (RELATIVE_PARTIALS_SUBFOLDER, partial_path), "r") as file:
             partial_content = file.read()
             partial_placeholder_to_content_map[partial_placeholder] = partial_content
         partial_name_suffix = "_%s" % partial_name
-        print("partial_name_suffix: %s" % partial_name_suffix)
         suffix_check_func = StringUtils.ends_on_suffix_func("_%s" % partial_name)
         sampler_vars_tmp: List[Tuple[str, str]] = list([(x, os.getenv(x)) for x in os.environ.keys() if
                                                         x.startswith(EnvConfig.PARTIAL_SAMPLER_SETTINGS_PREFIX)])
@@ -50,13 +47,10 @@ class AppConfig:
                                                                                              partial_content)
 
     # set sampler per field to substitute in partial
-    print("envionment keys: %s" % os.environ.keys())
     field_names = [x.removeprefix(EnvConfig.TEMPLATE_FIELD_IDENT_PREFIX) for x in os.environ.keys() if
                    x.startswith(EnvConfig.TEMPLATE_FIELD_IDENT_PREFIX)]
-    print("field names: %s" % field_names)
     field_placeholder_to_sampler_map = {}
     for field_name in field_names:
-        print("field_name: " + field_name)
         field_name_suffix = "_%s" % field_name
         sampler_vars_tmp: List[Tuple[str, str]] = list([(x, os.getenv(x)) for x in os.environ.keys() if
                                                         x.startswith(EnvConfig.FIELD_SAMPLER_SETTINGS_PREFIX)])
@@ -64,7 +58,6 @@ class AppConfig:
         for sampler_var in sampler_vars_tmp:
             if sampler_var[0].endswith(field_name_suffix):
                 sampler_vars.append(sampler_var)
-        print("field name sampler_vars: %s" % sampler_vars)
         field_placeholder_to_sampler_map[
             os.getenv(EnvConfig.TEMPLATE_FIELD_IDENT_PREFIX + field_name)] = FieldSamplerSelector.select(sampler_vars)
 

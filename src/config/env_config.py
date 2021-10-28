@@ -56,9 +56,6 @@ class EnvConfig:
         we only use those partial names for which identifier, content and sampler are defined
         :return:
         """
-        print("partial_ident_names: %s" % EnvConfig.partial_ident_names())
-        print("partial_content_names: %s" % EnvConfig.partial_content_names())
-        print("partial_sampler_names: %s" % EnvConfig.partial_sampler_names())
         return list(
             set(EnvConfig.partial_ident_names()) &
             set(EnvConfig.partial_content_names()) &

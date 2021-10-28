@@ -8,15 +8,19 @@ T = TypeVar('T')
 
 class OneOfSampler(Sampler[T]):
 
-    def __init__(self, selection: List[T]):
+    def __init__(self, selection: List[T], pre_sample_size: int):
         self.selection = selection
-        self.random_gen = random.Random(500)
+        self.pre_sample = random.choices(selection, k=pre_sample_size)
+        self.random_gen = random.Random()
+        self.random_gen.seed(500)
 
     def sample(self) -> T:
-        print("selecting out of selection: %s" % self.selection)
-        # TODO: both of choice and saple are not great since they depend on system time and will thus generate same
-        # values for close enough calls
-        #selected = self.random_gen.choice(self.selection)
-        selected = random.sample(self.selection, k=1)[0]
-        print("selected: %s" % selected)
+        """
+        both random.choice and random.sample depend on system time, and thus will generate same values for calls
+        very close to each other. To circumvent this, we keep a pre-sampling that is refilled every time an element
+        is picked.
+        :return:
+        """
+        selected = self.pre_sample.pop(0)
+        self.pre_sample.append(random.choice(self.selection))
         return selected
