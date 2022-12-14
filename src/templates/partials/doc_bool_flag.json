@@ -1,1 +1,5 @@
-{"product_id": {{PID}}, "bool":  {{BOOL}}}
+{
+  "product_id": {{PID}},
+  "bool":  {{BOOL}},
+  "string_val_1": {{STRING_VAL1}}
+}
