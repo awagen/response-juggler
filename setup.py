@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 # note:  versions with rc like 0.1.2.RC0 are normalized by setuptools to 0.1.2rc0
 setuptools.setup(
     name="ResponseJuggler",
-    version="0.1.1",
+    version="0.1.2",
     author="",
     author_email="",
     long_description=long_description,
